@@ -1,0 +1,57 @@
+ssh -nvNT -R 9093:localhost:9093 -i "~/Downloads/arch-v2-poc-sailesh.pem" ubuntu@ec2-13-212-193-234.ap-southeast-1.compute.amazonaws.com
+ssh -nvNT -R 9092:localhost:9092 -i "/home/structo/.ssh/arch-v2-poc-sailesh.pem" ubuntu@ec2-13-212-193-234.ap-southeast-1.compute.amazonaws.com
+
+docker exec -it kafka /bin/kafka-consumer-groups --bootstrap-server localhost:9092 --describe --all-groups
+docker exec -it kafka /bin/kafka-topics --create --topic start_job_sailesh-mac --bootstrap-server localhost:9094 --partitions 1 --replication-factor 1
+docker exec -it postgres  psql  -U my_user -d my_db
+
+kcat -b localhost:9093 -C -t start_job
+kcat -b localhost:9093 -P -t start_job
+{"jobId":"remote-job-1","filePath":"/uploads/sample2.txt","machineId":"sailesh-mac"}
+{"jobId":"remote-job-2","filePath":"/uploads/sample2.txt","machineId":"bizarre-fox"}
+
+kafkacat -b localhost:9093 -C -t output
+
+curl  -X POST \
+  'localhost:8083/connectors' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+  "name": "output-topic-sink",
+  "config": {
+    "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+    "tasks.max": 1,
+    "topics": "output",
+    "connection.url": "jdbc:postgresql://postgres:5432/my_db",
+    "connection.user": "my_user",
+    "connection.password": "S3cret",
+    "auto.create": true,
+    "insert.mode": "upsert",
+    "pk.mode": "record_value",
+    "pk.fields": "jobId",
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "true"
+  }
+}'
+
+curl  -X POST \
+  'localhost:8084/connectors' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
+  "name": "output-topic-sink-cloud",
+  "config": {
+    "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+    "tasks.max": 1,
+    "topics": "output",
+    "connection.url": "jdbc:postgresql://localhost:5432/my_db",
+    "connection.user": "my_user",
+    "connection.password": "S3cret",
+    "auto.create": true,
+    "insert.mode": "upsert",
+    "pk.mode": "record_value",
+    "pk.fields": "jobId",
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": "true"
+  }
+}'

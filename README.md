@@ -1,0 +1,3 @@
+# Hybrid Application POC
+
+![ARCHITECTURE](/ARCHITECTURE.png "ARCHITECTURE")
